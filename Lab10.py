@@ -1,3 +1,17 @@
+"""
+Pokémon Image Viewer
+
+A Tkinter-based GUI application that allows users to:
+- Select a Pokémon from a dropdown list (fetched from PokéAPI)
+- Display the Pokémon's image
+- Set the image as the desktop wallpaper (Windows only)
+
+Dependencies:
+- `pokeapi.py` (a module with functions to fetch Pokémon list and download images)
+- `Pillow` (for image manipulation)
+- `ctypes` (for setting wallpaper on Windows)
+"""
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import PhotoImage
@@ -10,7 +24,16 @@ from PIL import Image  # Importing PIL for image manipulation
 app_id = 'Pokemon.ImageViewer'
 
 def fetch_and_display_image(event=None):
-    """Fetch Pokémon image from API and display it in the Tkinter window."""
+    """
+    Fetch Pokémon image from API and display it in the Tkinter window.
+
+    Retrieves the selected Pokémon's image using `download_pokemon_image`,
+    then displays it in the GUI. Enables the "Set as Desktop Image" button
+    once an image is successfully loaded.
+
+    Args:
+        event (optional): The event that triggers this function (e.g., combobox selection).
+    """
     pokemon_name = combo.get().lower()
     
     if pokemon_name:
@@ -34,7 +57,14 @@ def fetch_and_display_image(event=None):
             messagebox.showerror("Error", "Image not found!")
 
 def set_desktop_wallpaper():
-    """Set the saved Pokémon image as desktop wallpaper (Windows only)."""
+    """
+    Set the saved Pokémon image as desktop wallpaper (Windows only).
+
+    Converts the image to a `.jpg` format if necessary,
+    then uses Windows API (`ctypes`) to set it as the wallpaper.
+
+    Displays an error message if the operation fails.
+    """
     if saved_image_path:
         # Ensure the saved image has the .jpg extension, as Windows prefers jpg for wallpapers
         wallpaper_path = saved_image_path if saved_image_path.lower().endswith('.jpg') else saved_image_path.replace('.png', '.jpg')
@@ -58,10 +88,18 @@ def set_desktop_wallpaper():
             messagebox.showinfo("Success", "Wallpaper set successfully!")
 
 def exit_app():
-    """Exit the application."""
+    """
+    Exit the application by closing the Tkinter GUI.
+    """
     root.quit()
 
 def main():
+    """
+    Main function to initialize and run the Tkinter GUI.
+
+    The function sets up the window, frames, widgets (combobox, image display, buttons),
+    and handles user interaction.
+    """
     # Initialize Tkinter window
     global root
     root = tk.Tk()
@@ -93,9 +131,6 @@ def main():
     btn_set_desktop = ttk.Button(root, text="Set as Desktop Image", command=set_desktop_wallpaper, state=tk.DISABLED)
     btn_set_desktop.pack(pady=10)
 
-    # "Exit" button
-    exit_button = tk.Button(root, text="Exit", command=exit_app)
-    exit_button.pack(pady=10)
 
     root.mainloop()
 

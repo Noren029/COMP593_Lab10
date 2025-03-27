@@ -1,79 +1,103 @@
-from tkinter import *
-from tkinter import ttk
-from PIL import Image, ImageTk
-from io import BytesIO
-import requests
-import os
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter import PhotoImage
 import ctypes
-from pokeapi import get_pokemon_info
+import os
+from pokeapi import get_pokemon_list, download_pokemon_image
+from PIL import Image  # Importing PIL for image manipulation
 
-# Set Windows Taskbar Icon
+# Set Windows Taskbar Icon (optional)
 app_id = 'Pokemon.ImageViewer'
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
 def fetch_and_display_image(event=None):
     """Fetch Pokémon image from API and display it in the Tkinter window."""
-    pokemon_name = combobox_choose.get().lower()
-    if pokemon_name not in ['pikachu', 'charizard', 'clefairy']:
-        return  # Prevent errors if no Pokémon is chosen
+    pokemon_name = combo.get().lower()
+    
+    if pokemon_name:
+        # Get the Pokémon image using the download_pokemon_image function
+        image_path = download_pokemon_image(pokemon_name)
 
-    poke_info = get_pokemon_info(pokemon_name)
-    if poke_info and 'sprites' in poke_info:
-        image_url = poke_info['sprites']['front_default']
-        if image_url:
-            response = requests.get(image_url)
-            img_data = Image.open(BytesIO(response.content))
-            img_data = img_data.resize((150, 150), Image.Resampling.LANCZOS)
-            img = ImageTk.PhotoImage(img_data)
-
-            lbl_image.config(image=img)
-            lbl_image.image = img  # Keep reference to prevent garbage collection
+        if image_path:
+            # Open the downloaded image using PhotoImage and display it
+            photo = PhotoImage(file=image_path)
+            img_label.config(image=photo)
+            img_label.photo = photo  # Keep reference to prevent garbage collection
 
             # Enable the "Set as Desktop Image" button when a Pokémon is selected
-            btn_set_desktop.config(state=NORMAL)
+            btn_set_desktop.config(state=tk.NORMAL)
 
-            # Save the image for later use
+            # Save the image path for later use (in case it's needed for setting as wallpaper)
             global saved_image_path
-            saved_image_path = os.path.join(os.getcwd(), "pokemon_wallpaper.jpg")
-            img_data.save(saved_image_path, "JPEG")
+            saved_image_path = image_path  # Save the path of the image
+
+        else:
+            messagebox.showerror("Error", "Image not found!")
 
 def set_desktop_wallpaper():
     """Set the saved Pokémon image as desktop wallpaper (Windows only)."""
     if saved_image_path:
-        ctypes.windll.user32.SystemParametersInfoW(20, 0, saved_image_path, 3)
+        # Ensure the saved image has the .jpg extension, as Windows prefers jpg for wallpapers
+        wallpaper_path = saved_image_path if saved_image_path.lower().endswith('.jpg') else saved_image_path.replace('.png', '.jpg')
+
+        # Convert the image to JPG if it's in PNG format
+        if not saved_image_path.lower().endswith('.jpg'):
+            try:
+                img = Image.open(saved_image_path)
+                img = img.convert("RGB")  # Convert to RGB to support JPG format
+                img.save(wallpaper_path, "JPEG")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to convert image to JPG: {e}")
+                return
+
+        # Use ctypes to set the wallpaper
+        result = ctypes.windll.user32.SystemParametersInfoW(20, 0, wallpaper_path, 3)
+        
+        if result == 0:  # If the function fails
+            messagebox.showerror("Error", "Failed to set wallpaper.")
+        else:
+            messagebox.showinfo("Success", "Wallpaper set successfully!")
+
+def exit_app():
+    """Exit the application."""
+    root.quit()
 
 def main():
-    global combobox_choose, lbl_image, btn_set_desktop, saved_image_path  
-
-    root = Tk()
+    # Initialize Tkinter window
+    global root
+    root = tk.Tk()
     root.title("Pokémon Image Viewer")
-    root.geometry("800x600")
+    root.geometry("600x650")
     root.resizable(True, True)
-
-    # Change Python Default Icon to Custom Icon
     root.iconbitmap("pokeball.ico")
 
     # Image frame and label
     frm_image = ttk.Frame(root)
-    frm_image.grid(row=0, column=0, pady=(20, 10))
-    lbl_image = ttk.Label(frm_image, text="Pokémon Image")
-    lbl_image.grid(row=0, column=0, padx=(10, 5), pady=10)
+    frm_image.pack(pady=20)
+    global img_label
+    img_label = tk.Label(frm_image, text="Pokémon Image")
+    img_label.pack()
 
     # Combobox input frame
-    frm_combobox = ttk.Frame(root)
-    frm_combobox.grid(row=1, column=0, pady=(20, 10))
-    poke_list = ['pikachu', 'charizard', 'clefairy']
-    combobox_choose = ttk.Combobox(frm_combobox, values=poke_list, state='readonly')
-    combobox_choose.set("Choose a Pokémon")
-    combobox_choose.grid(padx=10, pady=10)
+    frame = ttk.Frame(root)
+    frame.pack(pady=20)
 
-    # Bind event to enable button when Pokémon is selected
-    combobox_choose.bind("<<ComboboxSelected>>", fetch_and_display_image)
+    # Combobox to select Pokémon
+    global combo
+    combo = ttk.Combobox(frame, state="readonly", width=30)
+    combo['values'] = get_pokemon_list()  # Populate with Pokémon list
+    combo.pack()
+    combo.bind("<<ComboboxSelected>>", fetch_and_display_image)
 
     # "Set as Desktop Image" button (Initially Disabled)
-    btn_set_desktop = ttk.Button(root, text="Set as Desktop Image", command=set_desktop_wallpaper, state=DISABLED)
-    btn_set_desktop.grid(row=2, column=0, pady=(10, 20))
+    global btn_set_desktop
+    btn_set_desktop = ttk.Button(root, text="Set as Desktop Image", command=set_desktop_wallpaper, state=tk.DISABLED)
+    btn_set_desktop.pack(pady=10)
+
+    # "Exit" button
+    exit_button = tk.Button(root, text="Exit", command=exit_app)
+    exit_button.pack(pady=10)
 
     root.mainloop()
 
+# Call the main function directly
 main()

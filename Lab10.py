@@ -87,11 +87,6 @@ def set_desktop_wallpaper():
         else:
             messagebox.showinfo("Success", "Wallpaper set successfully!")
 
-def exit_app():
-    """
-    Exit the application by closing the Tkinter GUI.
-    """
-    root.quit()
 
 def main():
     """
